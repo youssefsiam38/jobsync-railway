@@ -19,6 +19,9 @@ changed; the combined image only adds Caddy, a Caddyfile and an entrypoint.
 
 - Built from `images/app/Dockerfile` and published to `ghcr.io/youssefsiam38/jobsync-railway` by
   `.github/workflows/publish-image.yml` on a `vX.Y.Z` tag (multi-arch), after the test suite passes.
+- Pinned: `ghcr.io/youssefsiam38/jobsync-railway:1.0.0`
+  - digest `sha256:d36be552ac5f183ac05ade2d04c3fd9cdc5f8dde798c1b8bba9e5c26668e6a42`
+  - multi-arch (linux/amd64, linux/arm64); wraps upstream `1.1.20`.
 - The Railway template references this wrapper image, pinned by digest (recorded in `RAILWAY_TEMPLATE.md`).
 
 ## Refreshing the upstream digest
