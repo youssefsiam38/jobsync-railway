@@ -1,0 +1,39 @@
+# Local test topology. One service mirrors the single Railway service:
+#   app -> the official JobSync image plus a Caddy basic-auth front door (same container).
+#          Caddy is public on $PORT; JobSync runs on loopback :3737. SQLite + resume files on /data.
+# The template runs the official JobSync image unmodified behind the front door.
+name: jobsync-railway-test
+
+networks:
+  default:
+    name: jobsync-railway-test
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: images/app/Dockerfile
+      args:
+        WRAPPER_VERSION: ${WRAPPER_VERSION:-0.0.0-local}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${JOBSYNC_RAILWAY_IMAGE:-jobsync-railway:local}
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: '8080'
+      OWNER_USERNAME: ${JOBSYNC_TEST_OWNER_USERNAME:-owner}
+      OWNER_PASSWORD: ${JOBSYNC_TEST_OWNER_PASSWORD:-local-test-only-front-door-pw}
+      # next-auth session signing key + stored-API-key encryption key (generated per deploy).
+      AUTH_SECRET: ${JOBSYNC_TEST_AUTH_SECRET:-local-test-only-auth-secret-000000000000}
+      ENCRYPTION_KEY: ${JOBSYNC_TEST_ENCRYPTION_KEY:-local-test-only-encryption-key-000000}
+      # next-auth v5 behind a reverse proxy. Local tests run over plain http.
+      AUTH_TRUST_HOST: 'true'
+      NEXTAUTH_URL: http://127.0.0.1:${JOBSYNC_TEST_PORT:-13737}
+      FORWARD_PROTO: http
+    ports:
+      - '127.0.0.1:${JOBSYNC_TEST_PORT:-13737}:8080'
+    volumes:
+      - data:/data
+
+volumes:
+  data:

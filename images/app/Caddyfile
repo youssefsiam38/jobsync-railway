@@ -1,0 +1,36 @@
+# Public front door for the JobSync Railway template.
+#
+# JobSync's Next.js server runs on loopback (127.0.0.1:{$INTERNAL_PORT}); this Caddy server is the
+# only public listener. On one HTTPS domain it:
+#   - answers /healthz itself (no auth, GET only) for Railway's health check;
+#   - puts EVERYTHING else behind HTTP basic auth and reverse-proxies to JobSync. JobSync has its own
+#     next-auth login as well — this outer gate keeps the instance private and, crucially, closes
+#     JobSync's open self-registration (anyone who could reach /signup could otherwise create an
+#     account). Only holders of the front-door password can reach the app at all.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:{$PORT:8080} {
+	# Railway health check. Answered by Caddy directly (GET only) so it never exposes an app route
+	# without the front-door credential.
+	handle /healthz {
+		@notget not method GET
+		respond @notget "method not allowed" 405
+		respond "ok" 200
+	}
+
+	# Everything else -> JobSync, behind basic auth.
+	handle {
+		basic_auth {
+			{$OWNER_USERNAME:owner} {$CADDY_PASSWORD_HASH}
+		}
+		reverse_proxy 127.0.0.1:{$INTERNAL_PORT:3737} {
+			# The public edge is HTTPS on Railway (default); tell next-auth so it builds https callback
+			# URLs and sets a Secure cookie. Local http tests set FORWARD_PROTO=http to match.
+			header_up X-Forwarded-Proto {$FORWARD_PROTO:https}
+		}
+	}
+}
